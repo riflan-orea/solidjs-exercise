@@ -1,0 +1,23 @@
+{
+  "name": "solidjs-exercise",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -b && vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@solidjs/router": "^0.15.4",
+    "@suid/icons-material": "^0.9.0",
+    "@suid/material": "^0.19.0",
+    "solid-js": "^1.9.10"
+  },
+  "devDependencies": {
+    "@types/node": "^24.10.1",
+    "typescript": "~5.9.3",
+    "vite": "^7.2.4",
+    "vite-plugin-solid": "^2.11.10"
+  }
+}
