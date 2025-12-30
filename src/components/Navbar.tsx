@@ -98,6 +98,16 @@ export function Navbar() {
          */}
         <Box sx={{ display: "flex", gap: 1 }}>
           {/**
+           * Users Link - Always visible (public route)
+           *
+           * This demonstrates TanStack Query + Table functionality.
+           * Accessible to all users, authenticated or not.
+           */}
+          <Button color="inherit" component={A} href="/users">
+            Users
+          </Button>
+
+          {/**
            * Show Component - SolidJS's conditional rendering
            *
            * Unlike React where you use {condition && <Component />},

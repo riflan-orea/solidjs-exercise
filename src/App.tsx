@@ -15,21 +15,28 @@
  * 2. CONTEXT PROVIDERS
  *    - AuthProvider wraps the entire app, making auth state
  *      available to all components via useAuth()
+ *    - QueryClientProvider enables TanStack Query throughout the app
  *
  * 3. PROTECTED ROUTES
  *    - ProtectedRoute component guards authenticated pages
  *    - Redirects to login if not authenticated
  *
+ * 4. TANSTACK QUERY
+ *    - QueryClient: Manages query cache and defaults
+ *    - QueryClientProvider: Makes QueryClient available to all components
+ *
  * FILE STRUCTURE:
  * - /                → Home page (public)
  * - /login           → Login page (public)
  * - /register        → Registration page (public)
+ * - /users           → Users directory with TanStack Table (public)
  * - /dashboard       → Dashboard (protected - requires auth)
  */
 
 import { JSX } from "solid-js";
 import { Router, Route } from "@solidjs/router";
 import { CssBaseline, ThemeProvider, createTheme } from "@suid/material";
+import { QueryClient, QueryClientProvider } from "@tanstack/solid-query";
 
 // Context Provider
 import { AuthProvider } from "./context/AuthContext";
@@ -43,6 +50,55 @@ import { Home } from "./pages/Home";
 import { Login } from "./pages/Login";
 import { Register } from "./pages/Register";
 import { Dashboard } from "./pages/Dashboard";
+import { Users } from "./pages/Users";
+
+/**
+ * QueryClient Configuration
+ *
+ * The QueryClient is the core of TanStack Query. It:
+ * - Manages the query cache
+ * - Handles background refetching
+ * - Provides default options for all queries
+ *
+ * Creating it outside the component ensures a single instance
+ * is shared across the entire application.
+ */
+const queryClient = new QueryClient({
+  /**
+   * Default Options
+   *
+   * These settings apply to all queries unless overridden.
+   */
+  defaultOptions: {
+    queries: {
+      /**
+       * staleTime - How long data stays "fresh"
+       *
+       * Fresh data is returned from cache without refetching.
+       * After staleTime, data is "stale" and will refetch in background.
+       *
+       * 1 minute = 60 * 1000 = 60000ms
+       */
+      staleTime: 60 * 1000,
+
+      /**
+       * retry - Number of retry attempts on failure
+       *
+       * If a query fails, TanStack Query will retry this many times
+       * before giving up and returning an error.
+       */
+      retry: 1,
+
+      /**
+       * refetchOnWindowFocus - Refetch when window regains focus
+       *
+       * When user switches back to your app, stale queries refetch.
+       * Set to false to disable this behavior.
+       */
+      refetchOnWindowFocus: false,
+    },
+  },
+});
 
 /**
  * Material UI Theme Configuration
@@ -107,6 +163,7 @@ interface RouteSectionProps {
  * It provides:
  * - Theme provider for consistent styling
  * - CSS baseline for cross-browser consistency
+ * - Query client for TanStack Query
  * - Auth provider for global state
  * - Navigation bar on all pages
  */
@@ -127,27 +184,37 @@ function Layout(props: RouteSectionProps) {
       <CssBaseline />
 
       {/**
-       * AuthProvider - Global Authentication State
+       * QueryClientProvider - TanStack Query Provider
        *
-       * All child components can access auth state via useAuth().
+       * Makes the QueryClient available to all child components.
+       * Any component can now use createQuery, createMutation, etc.
+       *
+       * Must wrap components that use TanStack Query hooks.
        */}
-      <AuthProvider>
+      <QueryClientProvider client={queryClient}>
         {/**
-         * Navbar - Always visible navigation
+         * AuthProvider - Global Authentication State
          *
-         * Placed here so it appears on every page.
-         * Uses auth context to show appropriate nav items.
+         * All child components can access auth state via useAuth().
          */}
-        <Navbar />
+        <AuthProvider>
+          {/**
+           * Navbar - Always visible navigation
+           *
+           * Placed here so it appears on every page.
+           * Uses auth context to show appropriate nav items.
+           */}
+          <Navbar />
 
-        {/**
-         * Route Content
-         *
-         * props.children contains the matched route's component.
-         * This is where the page content will be rendered.
-         */}
-        {props.children}
-      </AuthProvider>
+          {/**
+           * Route Content
+           *
+           * props.children contains the matched route's component.
+           * This is where the page content will be rendered.
+           */}
+          {props.children}
+        </AuthProvider>
+      </QueryClientProvider>
     </ThemeProvider>
   );
 }
@@ -226,6 +293,16 @@ function App() {
 
       {/* Register Page - For new users */}
       <Route path="/register" component={Register} />
+
+      {/**
+       * Users Page - TanStack Query + Table Demo
+       *
+       * This page demonstrates:
+       * - Fetching data with TanStack Query
+       * - Displaying data with TanStack Table
+       * - Sorting, filtering, and pagination
+       */}
+      <Route path="/users" component={Users} />
 
       {/**
        * PROTECTED ROUTES

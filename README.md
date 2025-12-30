@@ -1,6 +1,6 @@
 # SolidJS Authentication Demo - Learning Project
 
-A comprehensive learning project demonstrating authentication patterns, routing, state management, and UI components in SolidJS.
+A comprehensive learning project demonstrating authentication patterns, routing, state management, data fetching, and UI components in SolidJS.
 
 ## Features
 
@@ -8,6 +8,8 @@ A comprehensive learning project demonstrating authentication patterns, routing,
 - **Protected Routes**: Dashboard accessible only to authenticated users
 - **State Management**: Global auth state using SolidJS Context API
 - **Routing**: Client-side routing with @solidjs/router
+- **Data Fetching**: TanStack Query for server state management
+- **Data Tables**: TanStack Table with sorting, filtering, and pagination
 - **Material UI**: Beautiful components using SUID (Material UI for SolidJS)
 - **TypeScript**: Fully typed for better developer experience
 - **Extensive Comments**: Every file is documented for learning purposes
@@ -17,6 +19,8 @@ A comprehensive learning project demonstrating authentication patterns, routing,
 - **SolidJS** - Reactive UI framework
 - **Vite** - Fast development server and build tool
 - **@solidjs/router** - Official routing library
+- **@tanstack/solid-query** - Data fetching and caching
+- **@tanstack/solid-table** - Headless table library
 - **SUID** - Material UI components for SolidJS
 - **TypeScript** - Type safety
 
@@ -33,9 +37,13 @@ src/
 │   ├── Home.tsx         # Landing page
 │   ├── Login.tsx        # Login form
 │   ├── Register.tsx     # Registration form
-│   └── Dashboard.tsx    # Protected user dashboard
+│   ├── Dashboard.tsx    # Protected user dashboard
+│   └── Users.tsx        # TanStack Query + Table demo
+├── services/
+│   └── api.ts           # API functions for JSONPlaceholder
 ├── types/
-│   └── auth.ts          # TypeScript type definitions
+│   ├── auth.ts          # Auth type definitions
+│   └── api.ts           # API response type definitions
 ├── App.tsx              # Main app component with routing
 ├── index.tsx            # Application entry point
 └── index.css            # Global styles
@@ -72,7 +80,7 @@ Use these credentials to test the login functionality:
 
 Or create your own account using the Register page!
 
-## Key SolidJS Concepts Demonstrated
+## Key Concepts Demonstrated
 
 ### 1. Signals (Reactive State)
 ```typescript
@@ -117,20 +125,56 @@ createEffect(() => {
 </For>
 ```
 
-### 6. Router
+### 6. TanStack Query (Data Fetching)
 ```typescript
-<Router>
-  <Routes>
-    <Route path="/" component={Home} />
-    <Route path="/login" component={Login} />
-  </Routes>
+const usersQuery = createQuery(() => ({
+  queryKey: ['users'],
+  queryFn: fetchUsers,
+  staleTime: 5 * 60 * 1000, // 5 minutes
+}));
+
+// Access data, loading, error states
+usersQuery.data
+usersQuery.isLoading
+usersQuery.isError
+```
+
+### 7. TanStack Table (Data Display)
+```typescript
+const table = createSolidTable({
+  get data() { return usersQuery.data ?? []; },
+  columns,
+  getCoreRowModel: getCoreRowModel(),
+  getSortedRowModel: getSortedRowModel(),
+  getFilteredRowModel: getFilteredRowModel(),
+  getPaginationRowModel: getPaginationRowModel(),
+});
+```
+
+### 8. Router
+```typescript
+<Router root={Layout}>
+  <Route path="/" component={Home} />
+  <Route path="/users" component={Users} />
+  <Route path="/dashboard" component={ProtectedDashboard} />
 </Router>
 ```
+
+## API
+
+The Users page fetches data from [JSONPlaceholder](https://jsonplaceholder.typicode.com/), a free fake API for testing. It demonstrates:
+
+- Fetching user data with proper error handling
+- Caching with TanStack Query
+- Displaying data in a sortable, filterable table
+- Pagination controls
 
 ## Learning Resources
 
 - [SolidJS Documentation](https://solidjs.com)
 - [SolidJS Router](https://github.com/solidjs/solid-router)
+- [TanStack Query for Solid](https://tanstack.com/query/latest/docs/solid/overview)
+- [TanStack Table](https://tanstack.com/table/latest)
 - [SUID (Material UI)](https://suid.io)
 - [SolidJS Discord](https://discord.com/invite/solidjs)
 
