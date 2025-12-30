@@ -55,6 +55,7 @@ import { Dashboard } from "./pages/Dashboard";
 import { Users } from "./pages/Users";
 import { Charts } from "./pages/Charts";
 import { Forms } from "./pages/Forms";
+import PrintPDF from "./pages/PrintPDF";
 
 /**
  * QueryClient Configuration
@@ -327,6 +328,16 @@ function App() {
        * - Various input types and validation rules
        */}
       <Route path="/forms" component={Forms} />
+
+      {/**
+       * Print/PDF Page - Client-side Print and PDF Export Demo
+       *
+       * This page demonstrates:
+       * - Browser print functionality with window.print()
+       * - PDF generation using jsPDF and html2canvas
+       * - @media print CSS for print-specific styling
+       */}
+      <Route path="/print" component={PrintPDF} />
 
       {/**
        * PROTECTED ROUTES

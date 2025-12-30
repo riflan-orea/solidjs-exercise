@@ -122,6 +122,13 @@ export function Navbar() {
           </Button>
 
           {/**
+           * Print/PDF Link - Print and PDF export demo
+           */}
+          <Button color="inherit" component={A} href="/print">
+            Print/PDF
+          </Button>
+
+          {/**
            * Show Component - SolidJS's conditional rendering
            *
            * Unlike React where you use {condition && <Component />},
