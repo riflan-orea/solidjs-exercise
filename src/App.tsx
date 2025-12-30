@@ -30,6 +30,8 @@
  * - /login           → Login page (public)
  * - /register        → Registration page (public)
  * - /users           → Users directory with TanStack Table (public)
+ * - /charts          → Data visualization with Chart.js (public)
+ * - /forms           → Form handling with Modular Forms (public)
  * - /dashboard       → Dashboard (protected - requires auth)
  */
 
@@ -51,6 +53,8 @@ import { Login } from "./pages/Login";
 import { Register } from "./pages/Register";
 import { Dashboard } from "./pages/Dashboard";
 import { Users } from "./pages/Users";
+import { Charts } from "./pages/Charts";
+import { Forms } from "./pages/Forms";
 
 /**
  * QueryClient Configuration
@@ -303,6 +307,26 @@ function App() {
        * - Sorting, filtering, and pagination
        */}
       <Route path="/users" component={Users} />
+
+      {/**
+       * Charts Page - Data Visualization Demo
+       *
+       * This page demonstrates:
+       * - Chart.js integration with solid-chartjs
+       * - Different chart types (Line, Bar, Pie, Doughnut)
+       * - Reactive charts that update with signals
+       */}
+      <Route path="/charts" component={Charts} />
+
+      {/**
+       * Forms Page - Form Handling Demo
+       *
+       * This page demonstrates:
+       * - @modular-forms/solid for form state management
+       * - Valibot for schema validation
+       * - Various input types and validation rules
+       */}
+      <Route path="/forms" component={Forms} />
 
       {/**
        * PROTECTED ROUTES

@@ -7,13 +7,15 @@
  * 1. TanStack Query for data fetching with caching
  * 2. TanStack Table for powerful table functionality
  * 3. Sorting, filtering, and pagination
+ * 4. Query invalidation and cache management
  *
  * KEY CONCEPTS DEMONSTRATED:
  *
  * 1. TANSTACK QUERY (@tanstack/solid-query)
  *    - createQuery: Hook for fetching and caching data
+ *    - useQueryClient: Access the query client for cache operations
+ *    - invalidateQueries: Force refetch of cached data
  *    - Automatic loading/error states
- *    - Background refetching and cache invalidation
  *
  * 2. TANSTACK TABLE (@tanstack/solid-table)
  *    - createSolidTable: Creates a table instance
@@ -22,7 +24,7 @@
  */
 
 import { createSignal, Show, For } from "solid-js";
-import { createQuery } from "@tanstack/solid-query";
+import { createQuery, useQueryClient } from "@tanstack/solid-query";
 import {
   createSolidTable,
   getCoreRowModel,
@@ -51,6 +53,7 @@ import {
   Button,
   Stack,
   Chip,
+  Divider,
 } from "@suid/material";
 
 import { fetchUsers } from "../services/api";
@@ -68,22 +71,11 @@ import type { ApiUser } from "../types/api";
  */
 const columns: ColumnDef<ApiUser>[] = [
   {
-    /**
-     * ID Column
-     * accessorKey maps directly to user.id
-     */
     accessorKey: "id",
     header: "ID",
-    /**
-     * cell receives info about the row/cell
-     * info.getValue() returns the cell's value
-     */
     cell: (info) => info.getValue(),
   },
   {
-    /**
-     * Name Column with custom cell rendering
-     */
     accessorKey: "name",
     header: "Name",
     cell: (info) => (
@@ -93,9 +85,6 @@ const columns: ColumnDef<ApiUser>[] = [
     ),
   },
   {
-    /**
-     * Username Column
-     */
     accessorKey: "username",
     header: "Username",
     cell: (info) => (
@@ -107,9 +96,6 @@ const columns: ColumnDef<ApiUser>[] = [
     ),
   },
   {
-    /**
-     * Email Column with mailto link
-     */
     accessorKey: "email",
     header: "Email",
     cell: (info) => (
@@ -122,27 +108,16 @@ const columns: ColumnDef<ApiUser>[] = [
     ),
   },
   {
-    /**
-     * City Column - accessing nested property
-     *
-     * accessorFn allows custom accessor logic for nested data
-     */
     accessorFn: (row) => row.address.city,
     id: "city",
     header: "City",
   },
   {
-    /**
-     * Company Column - accessing nested property
-     */
     accessorFn: (row) => row.company.name,
     id: "company",
     header: "Company",
   },
   {
-    /**
-     * Website Column with external link
-     */
     accessorKey: "website",
     header: "Website",
     cell: (info) => (
@@ -162,119 +137,103 @@ const columns: ColumnDef<ApiUser>[] = [
  * Users Page Component
  *
  * Fetches users from API and displays them in an interactive table.
+ * Includes query invalidation demo.
  */
 export function Users() {
   /**
-   * Sorting State
+   * useQueryClient - Access the QueryClient instance
    *
-   * SortingState is an array of { id, desc } objects.
-   * Empty array means no sorting applied.
+   * The QueryClient provides methods for:
+   * - invalidateQueries: Mark queries as stale and refetch
+   * - resetQueries: Clear cache and refetch
+   * - setQueryData: Manually update cache
+   * - getQueryData: Read from cache
    */
+  const queryClient = useQueryClient();
+
+  /**
+   * Track invalidation state for UI feedback
+   */
+  const [isInvalidating, setIsInvalidating] = createSignal(false);
+  const [lastInvalidated, setLastInvalidated] = createSignal<string | null>(null);
+
+  // Table state
   const [sorting, setSorting] = createSignal<SortingState>([]);
-
-  /**
-   * Column Filters State
-   *
-   * ColumnFiltersState is an array of { id, value } objects.
-   * Used for column-specific filtering.
-   */
   const [columnFilters, setColumnFilters] = createSignal<ColumnFiltersState>([]);
-
-  /**
-   * Global Filter State
-   *
-   * A simple string for filtering across all columns.
-   */
   const [globalFilter, setGlobalFilter] = createSignal("");
 
   /**
    * TanStack Query - createQuery
-   *
-   * createQuery is the SolidJS version of React Query's useQuery.
-   *
-   * Key features:
-   * - Automatic caching: Data is cached by queryKey
-   * - Background refetching: Stale data is refetched automatically
-   * - Loading/error states: Built-in state management
-   * - Deduplication: Multiple components can share the same query
-   *
-   * Returns an object with:
-   * - data: The fetched data (undefined while loading)
-   * - isLoading: True during initial fetch
-   * - isError: True if fetch failed
-   * - error: The error object if failed
-   * - refetch: Function to manually refetch
    */
   const usersQuery = createQuery(() => ({
-    /**
-     * queryKey - Unique identifier for this query
-     *
-     * TanStack Query uses this key to:
-     * - Cache the results
-     * - Deduplicate requests
-     * - Invalidate/refetch data
-     *
-     * Can include variables: ['users', userId] for user-specific queries
-     */
     queryKey: ["users"],
-
-    /**
-     * queryFn - The function that fetches data
-     *
-     * Must return a Promise. TanStack Query handles:
-     * - Calling this function
-     * - Tracking loading state
-     * - Catching errors
-     * - Caching results
-     */
     queryFn: fetchUsers,
-
-    /**
-     * staleTime - How long data stays "fresh" (in ms)
-     *
-     * While fresh, queries return cached data without refetching.
-     * After staleTime, data is considered stale and will refetch
-     * in the background on next access.
-     *
-     * 5 minutes = 5 * 60 * 1000 = 300000ms
-     */
-    staleTime: 5 * 60 * 1000,
+    staleTime: 5 * 60 * 1000, // 5 minutes
   }));
 
   /**
-   * TanStack Table - createSolidTable
+   * Invalidate Users Query
    *
-   * Creates a table instance with all the features we need.
-   * The table is "headless" - it provides logic, we provide UI.
+   * invalidateQueries marks matching queries as stale, causing them
+   * to refetch the next time they're accessed or immediately if
+   * the query is currently being observed.
    *
-   * Configuration:
-   * - data: The data to display (from our query)
-   * - columns: Column definitions
-   * - state: Current table state (sorting, filters, etc.)
-   * - on*Change: Callbacks when state changes
-   * - get*RowModel: Enable specific features
+   * This is useful for:
+   * - After mutations (create/update/delete)
+   * - Manual refresh buttons
+   * - Polling scenarios
+   */
+  const handleInvalidate = async () => {
+    setIsInvalidating(true);
+
+    /**
+     * invalidateQueries options:
+     * - queryKey: Which queries to invalidate (supports partial matching)
+     * - exact: If true, only matches exact queryKey
+     * - refetchType: 'active' | 'inactive' | 'all' | 'none'
+     */
+    await queryClient.invalidateQueries({ queryKey: ["users"] });
+
+    setLastInvalidated(new Date().toLocaleTimeString());
+    setIsInvalidating(false);
+  };
+
+  /**
+   * Reset Users Query
+   *
+   * resetQueries is more aggressive - it:
+   * - Clears the cache for matching queries
+   * - Resets to initial state
+   * - Triggers refetch
+   */
+  const handleReset = async () => {
+    setIsInvalidating(true);
+    await queryClient.resetQueries({ queryKey: ["users"] });
+    setLastInvalidated(new Date().toLocaleTimeString());
+    setIsInvalidating(false);
+  };
+
+  /**
+   * Refetch Query
+   *
+   * Direct refetch bypasses stale checks - always fetches fresh data.
+   * Useful when you want to force a refresh regardless of stale state.
+   */
+  const handleRefetch = async () => {
+    setIsInvalidating(true);
+    await usersQuery.refetch();
+    setLastInvalidated(new Date().toLocaleTimeString());
+    setIsInvalidating(false);
+  };
+
+  /**
+   * TanStack Table instance
    */
   const table = createSolidTable({
-    /**
-     * get data() - Accessor for reactive data
-     *
-     * Using a getter makes this reactive - table updates when data changes.
-     * Falls back to empty array while loading.
-     */
     get data() {
       return usersQuery.data ?? [];
     },
-
-    /**
-     * columns - Column definitions (defined above)
-     */
     columns,
-
-    /**
-     * state - Current table state
-     *
-     * Using getters for reactivity with SolidJS signals.
-     */
     state: {
       get sorting() {
         return sorting();
@@ -286,26 +245,9 @@ export function Users() {
         return globalFilter();
       },
     },
-
-    /**
-     * State change handlers
-     *
-     * These are called when the table wants to update state.
-     * We update our signals, which triggers reactivity.
-     */
     onSortingChange: setSorting,
     onColumnFiltersChange: setColumnFilters,
     onGlobalFilterChange: setGlobalFilter,
-
-    /**
-     * Row Models - Enable table features
-     *
-     * Each get*RowModel enables a specific feature:
-     * - getCoreRowModel: Basic row rendering (required)
-     * - getSortedRowModel: Sorting functionality
-     * - getFilteredRowModel: Filtering functionality
-     * - getPaginationRowModel: Pagination functionality
-     */
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
@@ -324,11 +266,102 @@ export function Users() {
       </Box>
 
       {/**
-       * Loading State
+       * Query Invalidation Demo Section
        *
-       * Show spinner while data is being fetched.
-       * usersQuery.isLoading is true during initial fetch.
+       * This section demonstrates different ways to refresh/invalidate queries.
        */}
+      <Paper elevation={2} sx={{ padding: 3, marginBottom: 3 }}>
+        <Typography variant="h6" gutterBottom>
+          Query Cache Controls
+        </Typography>
+        <Typography variant="body2" color="text.secondary" sx={{ marginBottom: 2 }}>
+          Test different TanStack Query cache operations. Watch the network tab to see requests!
+        </Typography>
+
+        <Stack direction="row" spacing={2} flexWrap="wrap" sx={{ marginBottom: 2 }}>
+          {/**
+           * Invalidate Button
+           *
+           * Marks the query as stale, triggering a background refetch.
+           * The UI shows cached data while new data loads.
+           */}
+          <Button
+            variant="contained"
+            color="primary"
+            onClick={handleInvalidate}
+            disabled={isInvalidating()}
+          >
+            {isInvalidating() ? "Invalidating..." : "Invalidate Query"}
+          </Button>
+
+          {/**
+           * Reset Button
+           *
+           * Clears cache completely and refetches.
+           * Shows loading state as there's no cached data.
+           */}
+          <Button
+            variant="contained"
+            color="secondary"
+            onClick={handleReset}
+            disabled={isInvalidating()}
+          >
+            Reset Query
+          </Button>
+
+          {/**
+           * Refetch Button
+           *
+           * Forces immediate refetch regardless of stale state.
+           */}
+          <Button
+            variant="outlined"
+            onClick={handleRefetch}
+            disabled={isInvalidating()}
+          >
+            Force Refetch
+          </Button>
+        </Stack>
+
+        {/* Query State Info */}
+        <Stack direction="row" spacing={3} flexWrap="wrap">
+          <Chip
+            label={`Status: ${usersQuery.status}`}
+            color={usersQuery.status === "success" ? "success" : "default"}
+            size="small"
+          />
+          <Chip
+            label={`Fetching: ${usersQuery.isFetching ? "Yes" : "No"}`}
+            color={usersQuery.isFetching ? "warning" : "default"}
+            size="small"
+          />
+          <Chip
+            label={`Stale: ${usersQuery.isStale ? "Yes" : "No"}`}
+            color={usersQuery.isStale ? "error" : "success"}
+            size="small"
+          />
+          <Show when={lastInvalidated()}>
+            <Chip
+              label={`Last refreshed: ${lastInvalidated()}`}
+              size="small"
+              variant="outlined"
+            />
+          </Show>
+        </Stack>
+
+        <Divider sx={{ marginY: 2 }} />
+
+        {/* Explanation */}
+        <Typography variant="body2" color="text.secondary">
+          <strong>Invalidate:</strong> Marks query stale → background refetch → updates when done
+          <br />
+          <strong>Reset:</strong> Clears cache → shows loading → refetches from scratch
+          <br />
+          <strong>Refetch:</strong> Immediately fetches new data, bypasses stale time
+        </Typography>
+      </Paper>
+
+      {/* Loading State */}
       <Show when={usersQuery.isLoading}>
         <Box
           sx={{
@@ -343,12 +376,7 @@ export function Users() {
         </Box>
       </Show>
 
-      {/**
-       * Error State
-       *
-       * Show error message if fetch failed.
-       * usersQuery.error contains the error details.
-       */}
+      {/* Error State */}
       <Show when={usersQuery.isError}>
         <Alert severity="error" sx={{ marginBottom: 2 }}>
           Failed to load users: {(usersQuery.error as Error)?.message}
@@ -362,18 +390,17 @@ export function Users() {
         </Alert>
       </Show>
 
-      {/**
-       * Success State - Show Table
-       *
-       * Only render table when data is available.
-       */}
+      {/* Success State - Show Table */}
       <Show when={usersQuery.data}>
         <Paper elevation={3} sx={{ padding: 3 }}>
-          {/**
-           * Global Filter Input
-           *
-           * Filters across all columns at once.
-           */}
+          {/* Background fetch indicator */}
+          <Show when={usersQuery.isFetching && !usersQuery.isLoading}>
+            <Alert severity="info" sx={{ marginBottom: 2 }}>
+              Updating data in background...
+            </Alert>
+          </Show>
+
+          {/* Global Filter */}
           <Box sx={{ marginBottom: 3 }}>
             <TextField
               fullWidth
@@ -384,19 +411,9 @@ export function Users() {
             />
           </Box>
 
-          {/**
-           * Table Container
-           *
-           * TableContainer adds horizontal scrolling on small screens.
-           */}
+          {/* Table */}
           <TableContainer>
             <Table>
-              {/**
-               * Table Header
-               *
-               * We iterate over header groups and headers from the table.
-               * Each header can be clicked to toggle sorting.
-               */}
               <TableHead>
                 <For each={table.getHeaderGroups()}>
                   {(headerGroup) => (
@@ -404,12 +421,6 @@ export function Users() {
                       <For each={headerGroup.headers}>
                         {(header) => (
                           <TableCell
-                            /**
-                             * Click handler for sorting
-                             *
-                             * getToggleSortingHandler() returns a click handler
-                             * that toggles sorting for this column.
-                             */
                             onClick={header.column.getToggleSortingHandler()}
                             sx={{
                               cursor: header.column.getCanSort()
@@ -420,24 +431,10 @@ export function Users() {
                               userSelect: "none",
                             }}
                           >
-                            {/**
-                             * flexRender - Renders column header/cell content
-                             *
-                             * This handles both string headers and JSX headers.
-                             * First argument: what to render (header definition)
-                             * Second argument: context (header object)
-                             */}
                             {flexRender(
                               header.column.columnDef.header,
                               header.getContext()
                             )}
-
-                            {/**
-                             * Sort Indicator
-                             *
-                             * Show arrow indicating sort direction.
-                             * getIsSorted() returns 'asc', 'desc', or false.
-                             */}
                             {{
                               asc: " 🔼",
                               desc: " 🔽",
@@ -450,12 +447,6 @@ export function Users() {
                 </For>
               </TableHead>
 
-              {/**
-               * Table Body
-               *
-               * We iterate over rows from getRowModel().
-               * Each row contains cells that we render.
-               */}
               <TableBody>
                 <For each={table.getRowModel().rows}>
                   {(row) => (
@@ -468,11 +459,6 @@ export function Users() {
                       <For each={row.getVisibleCells()}>
                         {(cell) => (
                           <TableCell>
-                            {/**
-                             * flexRender for cell content
-                             *
-                             * Renders the cell using the column's cell definition.
-                             */}
                             {flexRender(
                               cell.column.columnDef.cell,
                               cell.getContext()
@@ -487,15 +473,7 @@ export function Users() {
             </Table>
           </TableContainer>
 
-          {/**
-           * Pagination Controls
-           *
-           * TanStack Table provides pagination methods:
-           * - getCanPreviousPage/getCanNextPage: Check if navigation possible
-           * - previousPage/nextPage: Navigate between pages
-           * - getPageCount: Total number of pages
-           * - getState().pagination: Current page info
-           */}
+          {/* Pagination */}
           <Stack
             direction="row"
             spacing={2}
@@ -525,11 +503,6 @@ export function Users() {
             </Button>
           </Stack>
 
-          {/**
-           * Data Summary
-           *
-           * Show total rows and filtered count.
-           */}
           <Typography
             variant="body2"
             color="text.secondary"
@@ -541,50 +514,44 @@ export function Users() {
           </Typography>
         </Paper>
 
-        {/**
-         * Learning Notes Section
-         */}
+        {/* Learning Notes */}
         <Paper
           elevation={1}
           sx={{
             padding: 3,
             marginTop: 3,
+            marginBottom: 4,
             backgroundColor: "primary.light",
             color: "primary.contrastText",
           }}
         >
           <Typography variant="h6" gutterBottom>
-            TanStack Query + Table Concepts
+            Query Invalidation Concepts
           </Typography>
           <Box component="ul" sx={{ margin: 0, paddingLeft: 3 }}>
             <li>
               <Typography variant="body2">
-                <strong>createQuery:</strong> Fetches data with automatic
-                caching, loading states, and error handling.
+                <strong>useQueryClient:</strong> Access the QueryClient for cache operations.
               </Typography>
             </li>
             <li>
               <Typography variant="body2">
-                <strong>queryKey:</strong> Unique identifier for caching.
-                Change it to refetch (e.g., ['users', searchTerm]).
+                <strong>invalidateQueries:</strong> Marks queries stale, triggers background refetch.
               </Typography>
             </li>
             <li>
               <Typography variant="body2">
-                <strong>createSolidTable:</strong> Headless table logic -
-                provides sorting, filtering, pagination.
+                <strong>resetQueries:</strong> Clears cache completely, refetches from scratch.
               </Typography>
             </li>
             <li>
               <Typography variant="body2">
-                <strong>Column Definitions:</strong> Define how each column
-                accesses and renders data.
+                <strong>refetch:</strong> Forces immediate data fetch, bypasses stale checks.
               </Typography>
             </li>
             <li>
               <Typography variant="body2">
-                <strong>flexRender:</strong> Renders cells/headers, handling
-                both strings and JSX.
+                <strong>isFetching vs isLoading:</strong> isFetching = any fetch, isLoading = no cached data.
               </Typography>
             </li>
           </Box>

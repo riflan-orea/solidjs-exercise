@@ -108,6 +108,20 @@ export function Navbar() {
           </Button>
 
           {/**
+           * Charts Link - Data visualization demo
+           */}
+          <Button color="inherit" component={A} href="/charts">
+            Charts
+          </Button>
+
+          {/**
+           * Forms Link - Form handling demo
+           */}
+          <Button color="inherit" component={A} href="/forms">
+            Forms
+          </Button>
+
+          {/**
            * Show Component - SolidJS's conditional rendering
            *
            * Unlike React where you use {condition && <Component />},
