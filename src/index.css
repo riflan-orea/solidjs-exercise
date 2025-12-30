@@ -177,3 +177,89 @@ main,
 .fade-in {
   animation: fadeIn 0.3s ease-out;
 }
+
+/* ============================================
+   PRINT STYLES - Styles for printing and PDF
+   ============================================ */
+
+/**
+ * @media print - Styles applied only when printing
+ *
+ * These rules control what gets printed and how it appears.
+ * Use the browser's print preview to see the effect.
+ *
+ * Key concepts:
+ * - Hide elements with display: none
+ * - Override colors (browsers often ignore background colors in print)
+ * - Control page breaks with page-break-* properties
+ */
+@media print {
+  /**
+   * @page rule - Control page settings
+   *
+   * Sets margins for the printed page.
+   * You can also control size, orientation, etc.
+   */
+  @page {
+    margin: 15mm;
+    size: A4 portrait;
+  }
+
+  /* Hide navigation and buttons when printing */
+  header,
+  nav,
+  .MuiAppBar-root,
+  button,
+  .no-print {
+    display: none !important;
+  }
+
+  /* Ensure white background for printing */
+  body {
+    background: white !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  /* Make sure the printable area takes full width */
+  .printable-area {
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  /* Prevent tables from breaking across pages */
+  table {
+    page-break-inside: avoid;
+  }
+
+  /* Keep table rows together */
+  tr {
+    page-break-inside: avoid;
+    page-break-after: auto;
+  }
+
+  /* Keep headings with their content */
+  h1, h2, h3, h4, h5, h6 {
+    page-break-after: avoid;
+  }
+
+  /* Ensure images don't break across pages */
+  img {
+    page-break-inside: avoid;
+    max-width: 100% !important;
+  }
+
+  /* Show link URLs in parentheses after the link text */
+  a[href]:after {
+    content: " (" attr(href) ")";
+    font-size: 0.8em;
+    color: #666;
+  }
+
+  /* Don't show URL for internal links */
+  a[href^="/"]:after,
+  a[href^="#"]:after {
+    content: "";
+  }
+}
