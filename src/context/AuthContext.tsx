@@ -23,8 +23,8 @@ import {
   useContext,
   createSignal,
   createEffect,
-  JSX,
 } from "solid-js";
+import type { JSX } from "solid-js/jsx-runtime";
 import type {
   User,
   LoginCredentials,

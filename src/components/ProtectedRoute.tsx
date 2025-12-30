@@ -16,7 +16,8 @@
  * </ProtectedRoute>
  */
 
-import { Show, JSX } from "solid-js";
+import { Show } from "solid-js";
+import type { JSX } from "solid-js/jsx-runtime";
 import { Navigate } from "@solidjs/router";
 import { CircularProgress, Box } from "@suid/material";
 import { useAuth } from "../context/AuthContext";

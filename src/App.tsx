@@ -35,7 +35,7 @@
  * - /dashboard       → Dashboard (protected - requires auth)
  */
 
-import { JSX } from "solid-js";
+import type { JSX } from "solid-js/jsx-runtime";
 import { Router, Route } from "@solidjs/router";
 import { CssBaseline, ThemeProvider, createTheme } from "@suid/material";
 import { QueryClient, QueryClientProvider } from "@tanstack/solid-query";
